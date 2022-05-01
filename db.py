@@ -11,16 +11,12 @@ pods_to_users_association_table = db.Table(
 
 #implement database model classes
 
-class User(db.Model):
-    """
-    User model
-    """
+
 class Pod(db.Model):
     """
     Pod model
     Has a one-to-many relationship with User model
     Has a one-to-many relationship with Task model
-    Has a one-to-many relationship with Invite model
     """
     __tablename__ = "pod"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -62,7 +58,50 @@ class Pod(db.Model):
             "description": self.description,
             "total_completed": self.total_completed,       
         }
+    
+class User(db.Model):
+    """
+    User model
+    """
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key = True, autoincrement = True)
+    username = db.Column(db.String, nullable = False)
+    password = db.Column(db.String, nullable = False)
+    leader = db.Column(db.Boolean, nullable = False)
+    pod = db.relationship("Pod", secondary=association_table1, back_populates="users")
 
+
+    def __init__(self, **kwargs):
+        """
+        Initializes a User object 
+        """
+        self.username = kwargs.get("username", "")
+        self.password = kwargs.get("password","")
+        self.leader = kwargs.get("leader","")
+    
+    def serialize(self):
+        """
+        Serializes a User object
+        """
+        return {
+            "id": self.id,
+            "username": self.username,
+            "password": self.password,
+            "leader": self.leader,
+            "pod": [a.simple_serialize() for a in self.pod]
+        }
+    
+    def simple_serialize(self):
+        """
+        Serializes a User object without pod 
+        """
+        return {
+            "id": self.id,
+            "username": self.username,
+            "password": self.password,
+            "leader": self.leader
+        }
+   
 
 class Task(db.Model):
     """

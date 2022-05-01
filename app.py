@@ -47,7 +47,7 @@ def get_user(user_id):
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
-        return failure_response("User not found!")
+        return json.dumps({"Error:" "User not found!"}),404
     return json.dumps(user.serialize()),200
     
 @app.route("/api/users/", methods = ["POST"])
@@ -60,7 +60,7 @@ def create_user():
     new_password = body.get("password")
     new_leader = body.get("leader")
     if not new_username or not new_password or not new_leader:
-        return failure_response("Required field(s) not supplied.", 400)
+        return json.dumps("Required field(s) not supplied.", 400)
 
     new_user = User(name = new_username, netid = new_password, leader = new_leader)
     db.session.add(new_user)

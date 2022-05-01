@@ -36,20 +36,36 @@ def hello():
 @app.route("/api/users/")
 def get_users():
     """
-    Endpoint for getting all users
+    Endpoint for getting all users 
     """
+    return json.dumps({"users": DB.get_all_users()}),200
 
 @app.route("/api/users/<int:user_id>/")
-def get_user_by_id(user_id):
+def get_user(user_id):
     """
-    Endpoint for getting a user by ID
+    Endpoint for getting user by id 
     """
-
-@app.route("/api/users/",methods = ["POST"])
+    user = User.query.filter_by(id=user_id).first()
+    if user is None:
+        return failure_response("User not found!")
+    return json.dumps(user.serialize()),200
+    
+@app.route("/api/users/", methods = ["POST"])
 def create_user():
     """
-    Endpoint for creating new user
+    Endpoint for creating new user 
     """
+    body = json.loads(request.data)
+    new_username = body.get("username")
+    new_password = body.get("password")
+    new_leader = body.get("leader")
+    if not new_username or not new_password or not new_leader:
+        return failure_response("Required field(s) not supplied.", 400)
+
+    new_user = User(name = new_username, netid = new_password, leader = new_leader)
+    db.session.add(new_user)
+    db.session.commit()
+    return json.dumps(new_user.serialize()),201
 
 
 # POD ROUTES

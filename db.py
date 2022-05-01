@@ -77,7 +77,7 @@ class User(db.Model):
         """
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
-        self.leader = kwargs.get("leader","")
+        self.leader = False
     
     def serialize(self):
         """

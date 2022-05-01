@@ -106,4 +106,28 @@ class User(db.Model):
 class Task(db.Model):
     """
     Task model
+
+    Has a one-to-one relationship with Pod
     """
+    tablename = "tasks"
+    id = db.Column(db.Integer, primary_key=True,autoincrement=True)
+    description = db.Column(db.String, nullable=False)
+    done = db.Column(db.Bool)
+    pod = db.relationship("Pod", cascade="delete") #one to many; upon Pod deletion all tasks will be deleted
+
+    def init(self, **kwargs):
+        """
+        initialize a Task object
+        """
+        self.description=kwargs.get("description")
+        self.done=kwargs.get("done", False) #default to not done
+
+    def serialize(self):
+        """
+        serialize Task object
+        """
+        return {
+            "id": self.id,
+            "description": self.description,
+            "done": self.done
+        }

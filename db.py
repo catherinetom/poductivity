@@ -1,5 +1,10 @@
-from flask_sqlalchemy import SQLAlchemy
+import datetime
+import hashlib
+import os
 import random
+
+
+from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
@@ -11,7 +16,6 @@ pods_to_users_association_table = db.Table(
 
 #implement database model classes
 
-
 class User(db.Model):
     """
     User model
@@ -21,34 +25,36 @@ class User(db.Model):
     username = db.Column(db.String, nullable = False)
     password = db.Column(db.String, nullable = False)
     leader = db.Column(db.Boolean, nullable = False)
-    pod = db.relationship("Pod", secondary=pods_to_users_association_table, back_populates="users")
+    pod = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
 
 
     def __init__(self, **kwargs):
         """
-        Initializes a User object 
+        Initializes a User object
         """
+        # name, netid, leader
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
         self.leader = False
     
-
     def serialize(self):
         """
         Serializes a User object
         """
+        pod = None
+        if self.pod is not None:
+            pod = self.pod.simple_serialize()
         return {
             "id": self.id,
             "username": self.username,
             "password": self.password,
             "leader": self.leader,
-            "pod": [a.simple_serialize() for a in self.pod]
+            "pod": pod
         }
-    
 
     def simple_serialize(self):
         """
-        Serializes a User object without pod 
+        Serializes a User object without pod
         """
         return {
             "id": self.id,
@@ -56,7 +62,6 @@ class User(db.Model):
             "password": self.password,
             "leader": self.leader
         }
-
 
 class Pod(db.Model):
     """
@@ -71,8 +76,8 @@ class Pod(db.Model):
     join_code = db.Column(db.String, nullable = False)
     total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
-    users = db.relationship("User", secondary= pods_to_users_association_table, back_populates = "user_pods")
-    
+    users = db.relationship("User")
+
 
     def __init__(self, **kwargs):
         """
@@ -83,7 +88,6 @@ class Pod(db.Model):
         self.join_code = random.randint(1000,9999)
         self.total_completed = 0
 
-
     def serialize(self):
         """
         Serialize Pod object
@@ -93,10 +97,10 @@ class Pod(db.Model):
             "name": self.name,
             "description": self.description,
             "total_completed": self.total_completed,
-            "tasks": [t.simple_serialize() for t in self.tasks], 
+            "join_code": self.join_code,
+            "tasks": [t.simple_serialize() for t in self.tasks],
             "users": [u.simple_serialize() for u in self.users],
         }
-    
 
     def simple_serialize(self):
         """
@@ -106,7 +110,8 @@ class Pod(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "total_completed": self.total_completed,       
+            "join_code": self.join_code,
+            "total_completed": self.total_completed,
         }
 
 
@@ -118,9 +123,8 @@ class Task(db.Model):
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True,autoincrement=True)
     description = db.Column(db.String, nullable=False)
-    done = db.Column(db.Boolean)
+    status = db.Column(db.Boolean)
     pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
-
 
     def __init__(self, **kwargs):
         """
@@ -129,18 +133,16 @@ class Task(db.Model):
         self.description=kwargs.get("description")
         self.done=kwargs.get("done", False)
 
-
     def serialize(self):
         """
         serialize Task object
         """
         return {
             "id": self.id,
-            "pod_id": self.pod_id,
             "description": self.description,
-            "status": self.status
+            "status": self.status,
+            "pod_id": self.pod_id
         }
-
 
     def update_task_status(self, status):
         """

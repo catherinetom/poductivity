@@ -25,12 +25,12 @@ class User(db.Model):
 
     def __init__(self, **kwargs):
         """
-        Initializes a User object 
+        Initializes a User object
         """
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
         self.leader = False
-    
+
     def serialize(self):
         """
         Serializes a User object
@@ -42,10 +42,10 @@ class User(db.Model):
             "leader": self.leader,
             "pod": [a.simple_serialize() for a in self.pod]
         }
-    
+
     def simple_serialize(self):
         """
-        Serializes a User object without pod 
+        Serializes a User object without pod
         """
         return {
             "id": self.id,
@@ -67,8 +67,9 @@ class Pod(db.Model):
     join_code = db.Column(db.String, nullable = False)
     total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
+    invites = db.relationship("Invite", cascade="delete")
     users = db.relationship("User", secondary= pods_to_users_association_table, back_populates = "user_pods")
-    
+
 
     def __init__(self, **kwargs):
         """
@@ -88,10 +89,10 @@ class Pod(db.Model):
             "name": self.name,
             "description": self.description,
             "total_completed": self.total_completed,
-            "tasks": [t.simple_serialize() for t in self.tasks], 
+            "tasks": [t.simple_serialize() for t in self.tasks],
             "users": [u.simple_serialize() for u in self.users],
         }
-    
+
     def simple_serialize(self):
         """
         Serialize Pod object w/o tasks or users
@@ -100,7 +101,7 @@ class Pod(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "total_completed": self.total_completed,       
+            "total_completed": self.total_completed,
         }
 
 
@@ -108,20 +109,20 @@ class Task(db.Model):
     """
     Task model
 
-    Has a one-to-one relationship with Pod
+    Has a one-to-many relationship with Pod
     """
-    tablename = "tasks"
+    __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True,autoincrement=True)
     description = db.Column(db.String, nullable=False)
     done = db.Column(db.Bool)
-    pod = db.relationship("Pod", cascade="delete") #one to many; upon Pod deletion all tasks will be deleted
+    pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
 
-    def init(self, **kwargs):
+    def __init__(self, **kwargs):
         """
         initialize a Task object
         """
         self.description=kwargs.get("description")
-        self.done=kwargs.get("done", False) #default to not done
+        self.done=kwargs.get("done", False)
 
     def serialize(self):
         """
@@ -129,6 +130,53 @@ class Task(db.Model):
         """
         return {
             "id": self.id,
+            "pod_id": self.pod_id,
             "description": self.description,
-            "done": self.done
+            "status": self.status
         }
+
+    def update_task_status(self, status):
+        """
+        updates Task status
+        """
+        self.done=status
+
+
+class Invite(db.Model):
+    """
+    Invite model
+
+    Has a one-to-many relationship with Pod
+    """
+    __tablename__ = "invites"
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    sender=db.Column(db.String, nullable=False)
+    receiver=db.Column(db.String, nullable=False)
+    accepted=db.Column(db.Bool)
+    pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
+
+    def __init__(self, **kwargs):
+        """
+        create an invitation, using usernames
+        """
+        self.sender=kwargs.get("sender")
+        self.receiver=kwargs.get("receiver")
+        self.accepted=kwargs.get("accepted", Null)
+
+    def serialize(self):
+        """
+        serialize Invite object
+        """
+        return {
+            "invite_id": self.id,
+            "pod_id": self.pod_id,
+            "sender": self.sender,
+            "receiver": self.receiver,
+            "status": self.status
+        }
+
+    def update_invite_status(self, status):
+        """
+        updates Invite status
+        """
+        self.done=status

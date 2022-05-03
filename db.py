@@ -11,6 +11,7 @@ pods_to_users_association_table = db.Table(
 
 #implement database model classes
 
+
 class User(db.Model):
     """
     User model
@@ -25,11 +26,12 @@ class User(db.Model):
 
     def __init__(self, **kwargs):
         """
-        Initializes a User object
+        Initializes a User object 
         """
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
         self.leader = False
+    
 
     def serialize(self):
         """
@@ -42,10 +44,11 @@ class User(db.Model):
             "leader": self.leader,
             "pod": [a.simple_serialize() for a in self.pod]
         }
+    
 
     def simple_serialize(self):
         """
-        Serializes a User object without pod
+        Serializes a User object without pod 
         """
         return {
             "id": self.id,
@@ -53,6 +56,7 @@ class User(db.Model):
             "password": self.password,
             "leader": self.leader
         }
+
 
 class Pod(db.Model):
     """
@@ -68,7 +72,7 @@ class Pod(db.Model):
     total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
     users = db.relationship("User", secondary= pods_to_users_association_table, back_populates = "user_pods")
-
+    
 
     def __init__(self, **kwargs):
         """
@@ -79,6 +83,7 @@ class Pod(db.Model):
         self.join_code = random.randint(1000,9999)
         self.total_completed = 0
 
+
     def serialize(self):
         """
         Serialize Pod object
@@ -88,9 +93,10 @@ class Pod(db.Model):
             "name": self.name,
             "description": self.description,
             "total_completed": self.total_completed,
-            "tasks": [t.simple_serialize() for t in self.tasks],
+            "tasks": [t.simple_serialize() for t in self.tasks], 
             "users": [u.simple_serialize() for u in self.users],
         }
+    
 
     def simple_serialize(self):
         """
@@ -100,21 +106,21 @@ class Pod(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "total_completed": self.total_completed,
+            "total_completed": self.total_completed,       
         }
 
 
 class Task(db.Model):
     """
     Task model
-
     Has a one-to-many relationship with Pod
     """
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True,autoincrement=True)
     description = db.Column(db.String, nullable=False)
-    done = db.Column(db.Bool)
+    done = db.Column(db.Boolean)
     pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
+
 
     def __init__(self, **kwargs):
         """
@@ -122,6 +128,7 @@ class Task(db.Model):
         """
         self.description=kwargs.get("description")
         self.done=kwargs.get("done", False)
+
 
     def serialize(self):
         """
@@ -133,6 +140,7 @@ class Task(db.Model):
             "description": self.description,
             "status": self.status
         }
+
 
     def update_task_status(self, status):
         """

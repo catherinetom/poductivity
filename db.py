@@ -67,7 +67,6 @@ class Pod(db.Model):
     join_code = db.Column(db.String, nullable = False)
     total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
-    invites = db.relationship("Invite", cascade="delete")
     users = db.relationship("User", secondary= pods_to_users_association_table, back_populates = "user_pods")
 
 

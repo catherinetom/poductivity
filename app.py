@@ -3,17 +3,14 @@ from db import db, User, Pod, Task
 from flask import Flask, request
 import os
 
-
 # define db filename
 app = Flask(__name__)
 db_filename = "poductivity.db"
-
 
 # setup config
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///%s" % db_filename
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ECHO"] = True
-
 
 # initialize app
 db.init_app(app)
@@ -25,6 +22,7 @@ with app.app_context():
 
 
 # BASE ROUTE
+
 @app.route("/")
 def hello():
     """
@@ -35,45 +33,42 @@ def hello():
 
 # USERS ROUTES
 
-
-# @app.route("/api/users/")
-# def get_users():
-#     """
-#     Endpoint for getting all users 
-#     """
-#     return json.dumps({"users": DB.get_all_users()}),200
-
+#@app.route("/api/users/")
+#def get_users():
+    #"""
+    #Endpoint for getting all users
+    #"""
+    #return json.dumps({"users": DB.get_all_users()}),200
 
 @app.route("/api/users/<int:user_id>/")
 def get_user(user_id):
     """
-    Endpoint for getting user by id 
+    Endpoint for getting user by id
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
-        return json.dumps({"error": "user not found."}), 404
+        return json.dumps({"Error:" "User not found!"}),404
     return json.dumps(user.serialize()),200
-
 
 @app.route("/api/users/", methods = ["POST"])
 def create_user():
     """
-    Endpoint for creating new user 
+    Endpoint for creating new user
     """
     body = json.loads(request.data)
     new_username = body.get("username")
     new_password = body.get("password")
+    new_leader = body.get("leader")
     if not new_username or not new_password or not new_leader:
-        return failure_response("Required field(s) not supplied.", 400)
+        return json.dumps({"Required field(s) not supplied."}), 400
 
-    new_user = User(name = new_username, netid = new_password, leader = new_leader)
+    new_user = User(username = new_username, password = new_password, leader = new_leader)
     db.session.add(new_user)
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
 
 # POD ROUTES
-
 
 @app.route("/api/pod/<int:user_id>/", methods = ["POST"])
 def create_pod(user_id):
@@ -87,14 +82,13 @@ def create_pod(user_id):
         return json.dumps({"Pod name is missing."}), 400
     if body.get("description") is None:
         return json.dumps({"Pod description is missing."}), 400
+    pod_creator = User.query.filter_by(id=user_id).first()
     new_pod = Pod(name=body.get("name"), description=body.get("description"))
     db.session.add(new_pod)
     db.session.commit()
-
     if new_pod is None:
         return json.dumps({"error": "new pod is null."}), 400
-    return json.dumps(new_pod.serialize()), 201  
-
+    return json.dumps(new_pod.serialize()), 201
 
 @app.route("/api/pod/<int:pod_id>/", methods=["DELETE"])
 def delete_pod_by_id(pod_id):
@@ -109,7 +103,6 @@ def delete_pod_by_id(pod_id):
     db.session.delete(pod)
     db.session.commit()
     return json.dumps(pod.serialize()), 200
-
 
 @app.route("/api/pod/<int:pod_id>/add/",methods = ["POST"])
 def add_user_to_pod(pod_id):
@@ -130,7 +123,6 @@ def add_user_to_pod(pod_id):
     db.session.commit()
 
     return json.dumps(pod.serialize()), 200
-
 
 @app.route("/api/pod/<int:user_id>/delete/",methods = ["DELETE"])
 def delete_user_from_pod(pod_id):
@@ -155,7 +147,6 @@ def delete_user_from_pod(pod_id):
 
 # TASK ROUTES
 
-
 @app.route("/api/task/<int:pod_id>/", methods = ["POST"])
 def create_task(pod_id):
     """
@@ -175,7 +166,6 @@ def create_task(pod_id):
     db.session.commit()
     return json.dumps(new_task.serialize()), 201
 
-
 @app.route("/api/users/<int:task_id>/")
 def get_task_by_id(task_id):
     """
@@ -185,7 +175,6 @@ def get_task_by_id(task_id):
     if task is None:
         return json.dumps({"error":"Task not found"}), 404
     return json.dumps(task.serialize()), 201
-
 
 @app.route("/api/update/<int:task_id>/", methods = ["POST"])
 def update_task(task_id):
@@ -204,6 +193,7 @@ def update_task(task_id):
     task.update_task_status(status)
     db.session.commit()
     return json.dumps(task.serialize()), 201
+
 
 
 if __name__ == "__main__":

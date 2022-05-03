@@ -197,68 +197,6 @@ def update_task(task_id):
     return json.dumps(task.serialize()), 201
 
 
-# INVITE ROUTES
-
-"""
-data included in invite request:
-
-{
-    sender: *check if pod leader
-    receiver: friend
-    accepted:
-}
-"""
-
-@app.route("/api/invite/<int:pod_id>/", methods=["POST"])
-def create_invite():
-    """
-    Endpoint for creating a pod invite
-
-    request:
-    sender (string - username)
-    receiver (string - username)
-    """
-    pod=Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error":"Pod not found"}), 404
-    body=json.loads(request.data)
-    sender=body.get("sender")
-    receiver=body.get("receiver")
-    if sender is None or receiver is None:
-        return json.dumps({"error":"Incomplete request"}), 400
-
-    """
-    create following Pod function: get leader of the pod (make it a Pod field)
-    """
-    pod_leader=pod.get_pod_leader()
-    if sender!=pod_leader:
-        return json.dumps({"error":"Only pod leaders can send invites"}), 400
-    new_invite=Invite(sender=sender, receiver=receiver)
-    db.session.add(new_invite)
-    db.session.commit()
-    return json.dumps(body), 201
-
-@app.route("/api/invite/<int:invite_id>/", methods=["POST"])
-def update_invite(invite_id):
-    """
-    Update invite status
-
-    request:
-    accepted (bool)
-    """
-    invite=Invite.query.filter_by(id=invite_id).first()
-    body=json.loads(request.data)
-    status=body.get("accepted")
-    if accepted is None:
-        return json.dumps({"error": "No invite response"}, 400)
-    invite.update_invite_status(status)
-    if accepted is True:
-        """ missing one line here:
-
-        function adding user to Pod by username"""
-    return json.dumps(invite.serialize()), 201
-    transaction=DB.get_transaction_by_id(transaction_id)
-
 
     if __name__ == "__main__":
         app.run(host="0.0.0.0", port=5000, debug=True)

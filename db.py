@@ -76,7 +76,6 @@ class Pod(db.Model):
     join_code = db.Column(db.String, nullable = False)
     total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
-    users = db.relationship("User")
 
 
     def __init__(self, **kwargs):
@@ -99,12 +98,11 @@ class Pod(db.Model):
             "total_completed": self.total_completed,
             "join_code": self.join_code,
             "tasks": [t.simple_serialize() for t in self.tasks],
-            "users": [u.simple_serialize() for u in self.users],
         }
 
     def simple_serialize(self):
         """
-        Serialize Pod object w/o tasks or users
+        Serialize Pod object w/o tasks
         """
         return {
             "id": self.id,
@@ -123,7 +121,7 @@ class Task(db.Model):
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True,autoincrement=True)
     description = db.Column(db.String, nullable=False)
-    status = db.Column(db.Boolean)
+    status = db.Column(db.Boolean, nullable=False)
     pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
 
     def __init__(self, **kwargs):

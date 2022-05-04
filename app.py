@@ -59,15 +59,15 @@ def create_user():
     new_username = body.get("username")
     new_password = body.get("password")
     new_leader = body.get("leader")
-    if not new_username or not new_password or not new_leader:
-        return json.dumps({"Required field(s) not supplied."}), 400
+    if not new_username:
+        return json.dumps({"error": "username field not supplied."}), 400
+    if not new_password:
+        return json.dumps({"error": "password field not supplied."}), 400
 
-    new_user = User(username = new_username, password = new_password, leader = new_leader)
+    new_user = User(username = new_username, password = new_password)
     db.session.add(new_user)
     db.session.commit()
     return json.dumps(new_user.serialize()),201
-
-@app.route("/api/join/<int:pod_id>/", methods = [""])
 
 
 # POD ROUTES
@@ -84,7 +84,7 @@ def create_pod(user_id):
         return json.dumps({"Pod name is missing."}), 400
     if body.get("description") is None:
         return json.dumps({"Pod description is missing."}), 400
-    pod_creator = User.query.filter_by(id=user_id).first()
+    #in here, add the pod to the User object
     new_pod = Pod(name=body.get("name"), description=body.get("description"))
     db.session.add(new_pod)
     db.session.commit()
@@ -119,9 +119,7 @@ def add_user_to_pod(pod_id):
     user = User.query.filter_by(id = body.get("user_id")).first()
     if user is None:
         return json.dumps({"error": "user is null"}), 404
-    pod_creator = body.get("pod_creator") #find out if user is pod creator
-    if pod_creator: #if the user calling method is pod creator
-        pod.users.append(user)
+    pod.users.append(user)
     db.session.commit()
 
     return json.dumps(pod.serialize()), 200
@@ -168,7 +166,7 @@ def create_task(pod_id):
     db.session.commit()
     return json.dumps(new_task.serialize()), 201
 
-@app.route("/api/users/<int:task_id>/")
+@app.route("/api/task/<int:task_id>/")
 def get_task_by_id(task_id):
     """
     Endpoing for getting a task by ID
@@ -178,7 +176,7 @@ def get_task_by_id(task_id):
         return json.dumps({"error":"Task not found"}), 404
     return json.dumps(task.serialize()), 201
 
-@app.route("/api/update/<int:task_id>/", methods = ["POST"])
+@app.route("/api/task/update/<int:task_id>/", methods = ["POST"])
 def update_task(task_id):
     """
     Endpoint for updating a task's status
@@ -189,7 +187,7 @@ def update_task(task_id):
     if task is None:
         return json.dumps({"error":"Task not found"}), 404
     body=json.loads(request.data)
-    status=body.get("status")
+    status=body.get("done")
     if status is None:
         return json.dumps({"error":"Incomplete request"}), 400
     task.status=status

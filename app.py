@@ -75,7 +75,6 @@ def join_pod(user_id):
     Endpoint for a User to join a Pod, using pod id and a join code.
 
     request:
-    user_id
     join_code
     """
     user = User.query.filter_by(id = body.get("user_id")).first()

@@ -25,8 +25,7 @@ class User(db.Model):
     username = db.Column(db.String, nullable = False)
     password = db.Column(db.String, nullable = False)
     leader = db.Column(db.Boolean, nullable = False)
-    pod = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
-
+    pod_id = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
 
     def __init__(self, **kwargs):
         """
@@ -36,7 +35,7 @@ class User(db.Model):
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
         self.leader = False
-    
+
     def serialize(self):
         """
         Serializes a User object
@@ -62,6 +61,7 @@ class User(db.Model):
             "password": self.password,
             "leader": self.leader
         }
+
 
 class Pod(db.Model):
     """
@@ -141,9 +141,3 @@ class Task(db.Model):
             "status": self.status,
             "pod_id": self.pod_id
         }
-
-    def update_task_status(self, status):
-        """
-        updates Task status
-        """
-        self.status=status

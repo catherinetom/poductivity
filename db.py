@@ -131,7 +131,7 @@ class Task(db.Model):
         initialize a Task object
         """
         self.description=kwargs.get("description")
-        self.done=kwargs.get("done", False)
+        self.staus=kwargs.get("staus", False)
 
     def serialize(self):
         """
@@ -148,4 +148,4 @@ class Task(db.Model):
         """
         updates Task status
         """
-        self.done=status
+        self.status=status

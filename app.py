@@ -69,6 +69,27 @@ def create_user():
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
+@app.route("/api/join/<int:user_id>/", methods = [""])
+def join_pod(user_id):
+    """
+    Endpoint for a User to join a Pod, using pod id and a join code.
+
+    request:
+    user_id
+    join_code
+    """
+    user = User.query.filter_by(id = body.get("user_id")).first()
+    if user is None:
+        return json.dumps({"error": "user is null"}), 404
+    body = json.loads(request.data)
+    join_code=body.get("join_code")
+    pod = Pod.query.filter_by(join_code=join_code).first()
+    if pod is None:
+        return json.dumps({"error": "No pod with that join code."}), 404
+    pod.users.append(user)
+    db.session.commit()
+
+    return json.dumps(pod.serialize()), 200
 
 # POD ROUTES
 

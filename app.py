@@ -67,6 +67,8 @@ def create_user():
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
+@app.route("/api/join/<int:pod_id>/", methods = [""])
+
 
 # POD ROUTES
 
@@ -190,7 +192,7 @@ def update_task(task_id):
     status=body.get("status")
     if status is None:
         return json.dumps({"error":"Incomplete request"}), 400
-    task.update_task_status(status)
+    task.status=status
     db.session.commit()
     return json.dumps(task.serialize()), 201
 

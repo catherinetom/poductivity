@@ -81,11 +81,11 @@ def join_pod(user_id):
     if user is None:
         return json.dumps({"error": "user is null"}), 404
     body = json.loads(request.data)
-    join_code=body.get("join_code")
+    join_code = body.get("join_code")
     pod = Pod.query.filter_by(join_code=join_code).first()
     if pod is None:
         return json.dumps({"error": "No pod with that join code."}), 404
-    pod.users.append(user)
+    user.pod = pod.pod_id
     db.session.commit()
 
     return json.dumps(pod.serialize()), 200

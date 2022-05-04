@@ -25,7 +25,7 @@ class User(db.Model):
     username = db.Column(db.String, nullable = False)
     password = db.Column(db.String, nullable = False)
     leader = db.Column(db.Boolean, nullable = False)
-    pod = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
+    podID = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
 
 
     def __init__(self, **kwargs):
@@ -41,15 +41,16 @@ class User(db.Model):
         """
         Serializes a User object
         """
-        pod = None
-        if self.pod is not None:
-            pod = self.pod.simple_serialize()
+        pod = Pod.query.filter_by(id = self.podID).first()
+        pod_serialized = None
+        if pod is not None:
+            pod_serialized = pod.simple_serialize() #pod is the podID, we want the pod that the podID references
         return {
             "id": self.id,
             "username": self.username,
             "password": self.password,
             "leader": self.leader,
-            "pod": pod
+            "pod": pod_serialized
         }
 
     def simple_serialize(self):
@@ -97,7 +98,7 @@ class Pod(db.Model):
             "description": self.description,
             "total_completed": self.total_completed,
             "join_code": self.join_code,
-            "tasks": [t.simple_serialize() for t in self.tasks],
+            "tasks": [t.serialize() for t in self.tasks],
         }
 
     def simple_serialize(self):

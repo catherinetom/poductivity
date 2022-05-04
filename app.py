@@ -69,7 +69,7 @@ def create_user():
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
-@app.route("/api/join/<int:user_id>/", methods = [""])
+@app.route("/api/join/<int:user_id>/", methods = ["POST"])
 def join_pod(user_id):
     """
     Endpoint for a User to join a Pod, using pod id and a join code.
@@ -77,7 +77,7 @@ def join_pod(user_id):
     request:
     join_code
     """
-    user = User.query.filter_by(id = body.get("user_id")).first()
+    user = User.query.filter_by(id = body.get(user_id)).first()
     if user is None:
         return json.dumps({"error": "user is null"}), 404
     body = json.loads(request.data)

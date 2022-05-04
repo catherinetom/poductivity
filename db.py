@@ -8,11 +8,11 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-pods_to_users_association_table = db.Table(
-    "pods_to_users_association",
-    db.Column("user_id", db.Integer, db.ForeignKey("users.id")),
-    db.Column("pod_id", db.Integer, db.ForeignKey("pod.id"))
-)
+# pods_to_users_association_table = db.Table(
+#     "pods_to_users_association",
+#     db.Column("user_id", db.Integer, db.ForeignKey("users.id")),
+#     db.Column("pod_id", db.Integer, db.ForeignKey("pod.id"))
+# )
 
 #implement database model classes
 
@@ -25,7 +25,8 @@ class User(db.Model):
     username = db.Column(db.String, nullable = False)
     password = db.Column(db.String, nullable = False)
     leader = db.Column(db.Boolean, nullable = False)
-    pod_id = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
+    pod = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
+
 
     def __init__(self, **kwargs):
         """
@@ -35,7 +36,7 @@ class User(db.Model):
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
         self.leader = False
-
+    
     def serialize(self):
         """
         Serializes a User object
@@ -61,7 +62,6 @@ class User(db.Model):
             "password": self.password,
             "leader": self.leader
         }
-
 
 class Pod(db.Model):
     """
@@ -129,7 +129,8 @@ class Task(db.Model):
         initialize a Task object
         """
         self.description=kwargs.get("description")
-        self.staus=kwargs.get("staus", False)
+        self.pod_id=kwargs.get("pod_id")
+        self.status = False
 
     def serialize(self):
         """

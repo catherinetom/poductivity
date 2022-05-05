@@ -350,6 +350,8 @@ def delete_pod_by_id(user_id):
     if body.get("pod_id") is None:
         return json.dumps({"error": "pod to delete not specified"}), 400
     pod = Pod.query.filter_by(id=body.get("pod_id")).first()
+    if pod is None:
+        return json.dumps({"error": "pod not found"}), 404
     if user.leader == False:
         return json.dumps({"error": "not allowed"}), 400
     db.session.delete(pod)

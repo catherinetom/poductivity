@@ -1,6 +1,8 @@
 import json
 from db import db, User, Pod, Task
 from flask import Flask, request
+import users_dao
+import datetime
 import os
 
 # define db filename
@@ -26,19 +28,144 @@ with app.app_context():
 @app.route("/")
 def hello():
     """
-    Endpoint for printing hello
+    Endpoint for printing "<netid> was here!"
     """
-    return "hello"
+    return "" + str(os.environ.get("NETID")) + " was here!"
+
+def extract_token(request):
+    """
+    Helper function that extracts the token from the header of a request
+    """
+    auth_header = request.headers.get("Authorization")
+    
+    if auth_header is None:
+        return False, json.dumps({"error": "Missing authorization header"}),404
+    
+    bearer_token = auth_header.replace("Bearer","").strip()
+
+    return True, bearer_token
 
 
-# USERS ROUTES
+# AUTHENTICATION
 
-#@app.route("/api/users/")
-#def get_users():
-    #"""
-    #Endpoint for getting all users
-    #"""
-    #return json.dumps({"users": DB.get_all_users()}),200
+
+@app.route("/register/", methods=["POST"])
+def register_account():
+    """
+    Endpoint for registering a new user
+    """
+    body = json.loads(request.data)
+    username = body.get("username")
+    password = body.get("password")
+    leader = body.get("leader")
+
+    if username is None or password is None or leader is None :
+        return json.dumps({"error": "Missing username or password or leader"}),404
+    
+    was_successful, user = users_dao.create_user(username, password, leader)
+
+    if not was_successful:
+        return json.dumps({"error": "User already exists"}),404
+    
+    return json.dumps(
+        {
+            "session_token": user.session_token, 
+            "session_expiration": str(user.session_expiration),
+            "update_token": user.update_token
+        }),201
+
+@app.route("/login/", methods=["POST"])
+def login():
+    """
+    Endpoint for logging in a user
+    """
+    body = json.loads(request.data)
+    username = body.get("username")
+    password = body.get("password")
+
+    if username is None or password is None:
+        return json.dumps({"error": "Missing email or password"}),400
+    
+    was_successful, user = users_dao.verify_credentials(username,password)
+
+    if not was_successful:
+        return json.dumps({"error": "Incorrect username or password"}),401
+    
+    return json.dumps(
+        {
+            "session_token": user.session_token,
+            "session_expiration": str(user.session_expiration),
+            "update_token": user.update_token,
+            "login": "successful"
+
+        }
+    ),201 
+
+
+@app.route("/session/", methods=["POST"])
+def update_session():
+    """
+    Endpoint for updating a user's session
+    """
+    was_successful, update_token = extract_token(request)
+
+    if not was_successful:
+        return update_token
+    
+    try:
+        user = users_dao.renew_session(update_token)
+    except Exception as e:
+        return json.dumps(f"Invalid update token: {str(e)}"),404
+
+    return json.dumps(
+        {
+            "session_token": user.session_token,
+            "session_expiration": str(user.session_expiration),
+            "update_token": user.update_token
+        }),201
+
+@app.route("/secret/", methods=["GET"])
+def secret_message():
+    """
+    Endpoint for verifying a session token and returning a secret message
+    """
+    was_successful, session_token = extract_token(request)
+
+    if not was_successful:
+        return session_token
+    
+    user = users_dao.get_user_by_session_token(session_token)
+    if not user or not user.verify_session_token(session_token):
+        return json.dumps({"error": "Invalid session token"}),404
+    
+    return json.dumps(
+        {"message": "You have sucessfully implemented sessions!"}),201
+    
+
+@app.route("/logout/", methods=["POST"])
+def logout():
+    """
+    Endpoint for logging out a user 
+    """
+    was_successful, session_token = extract_token(request)
+
+    if not was_successful:
+        return session_token
+    
+    user = users_dao.get_user_by_session_token(session_token)
+
+    if not user or not user.verify_session_token(session_token):
+        return json.dumps({"error": "Invalid session token"}),404
+    
+    user.session_expiration = datetime.datetime.now()
+    db.session.commit()
+
+    return json.dumps({
+        "message": "You have successfully logged out"
+    }),201
+
+#USER ROUTES  
+
 @app.route("/api/user/")
 def get_all_users():
     """
@@ -46,7 +173,7 @@ def get_all_users():
     """
     return json.dumps({"users": [u.serialize() for u in User.query.all()]}),200
 
-@app.route("/api/user/<int:user_id>/")
+@app.route("/api/users/<int:user_id>/")
 def get_user(user_id):
     """
     Endpoint for getting user by id
@@ -56,7 +183,7 @@ def get_user(user_id):
         return json.dumps({"Error:" "User not found!"}),404
     return json.dumps(user.serialize()),200
 
-@app.route("/api/user/", methods = ["POST"])
+@app.route("/api/users/", methods = ["POST"])
 def create_user():
     """
     Endpoint for creating new user
@@ -64,26 +191,26 @@ def create_user():
     body = json.loads(request.data)
     new_username = body.get("username")
     new_password = body.get("password")
+    new_leader = body.get("leader")
     if not new_username:
         return json.dumps({"error": "username field not supplied."}), 400
     if not new_password:
         return json.dumps({"error": "password field not supplied."}), 400
 
-    new_user = User(username = new_username, password = new_password)
+    new_user = User(username = new_username, password = new_password, leader = new_leader)
     db.session.add(new_user)
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
-@app.route("/api/user/<int:user_id>/", methods = ["POST"])
+@app.route("/api/join/<int:user_id>/", methods = [""])
 def join_pod(user_id):
     """
     Endpoint for a User to join a Pod, using pod id and a join code.
-
     request:
     user_id
     join_code
     """
-    user = User.query.filter_by(id = user_id).first()
+    user = User.query.filter_by(id = body.get("user_id")).first()
     if user is None:
         return json.dumps({"error": "user is null"}), 404
     body = json.loads(request.data)
@@ -91,10 +218,10 @@ def join_pod(user_id):
     pod = Pod.query.filter_by(join_code=join_code).first()
     if pod is None:
         return json.dumps({"error": "No pod with that join code."}), 404
-    user.podID=pod.id
+    pod.users.append(user)
     db.session.commit()
 
-    return json.dumps(user.serialize()), 200
+    return json.dumps(pod.serialize()), 200
 
 @app.route("/api/user/<int:user_id>/delete/",methods = ["DELETE"])
 def delete_user_from_pod(user_id):
@@ -122,23 +249,6 @@ def delete_user_from_pod(user_id):
 
 # POD ROUTES
 
-@app.route("/api/pod/")
-def get_all_pods():
-    """
-    Endpoint for getting all pods
-    """
-    return json.dumps({"pods": [p.serialize() for p in Pod.query.all()]}),200
-
-@app.route("/api/pod/<int:pod_id>/")
-def get_pod(pod_id):
-    """
-    Endpoint for getting a pod by id
-    """
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
-    return json.dumps(pod.serialize()), 200
-
 @app.route("/api/pod/<int:user_id>/", methods = ["POST"])
 def create_pod(user_id):
     """
@@ -159,48 +269,12 @@ def create_pod(user_id):
         return json.dumps({"error": "new pod is null."}), 400
     return json.dumps(new_pod.serialize()), 201
 
-@app.route("/api/pod/totaltasks/<int:pod_id>/")
-def pod_total_tasks(pod_id):
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
-    total_tasks = 0
-    for t in Task.query.all():
-        if t.pod_id == pod_id:
-            total_tasks=total_tasks+1
-    return json.dumps({"total tasks": total_tasks}), 201
-
-@app.route("/api/pod/taskscompleted/<int:pod_id>/")
-def pod_tasks_completed(pod_id):
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
-    tasks_completed = 0
-    for t in Task.query.all():
-        if t.pod_id == pod_id:
-            if t.status == True:
-                tasks_completed=tasks_completed+1
-    return json.dumps({"tasks completed": tasks_completed}), 201
-
-@app.route("/api/pod/tasksincomplete/<int:pod_id>/")
-def pod_tasks_incompleted(pod_id):
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
-    tasks_incomplete = 0
-    for t in Task.query.all():
-        if t.pod_id == pod_id:
-            if t.status == False:
-                tasks_incomplete=tasks_incomplete+1
-    return json.dumps({"tasks incomplete": tasks_incomplete}), 201
-
-
-
 @app.route("/api/pod/<int:pod_id>/", methods=["DELETE"])
 def delete_pod_by_id(pod_id):
     """
     Endpoint for deleting pod by id
     """
+
     pod = Pod.query.filter_by(id=pod_id).first()
     if pod is None:
         return json.dumps({"error": "pod not found"}), 404
@@ -208,6 +282,25 @@ def delete_pod_by_id(pod_id):
     db.session.delete(pod)
     db.session.commit()
     return json.dumps(pod.serialize()), 200
+
+@app.route("/api/pod/<int:pod_id>/add/",methods = ["POST"])
+def add_user_to_pod(pod_id):
+    """
+    Endpoint for adding a user to a pod by id
+    """
+    pod = Pod.query.filter_by(id=pod_id).first()
+    if pod is None:
+        return json.dumps({"error": "pod is not found."}), 404
+    #process request body if pod IS found
+    body = json.loads(request.data)
+    user = User.query.filter_by(id = body.get("user_id")).first()
+    if user is None:
+        return json.dumps({"error": "user is null"}), 404
+    pod.users.append(user)
+    db.session.commit()
+
+    return json.dumps(pod.serialize()), 200
+
 
 # TASK ROUTES
 

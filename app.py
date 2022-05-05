@@ -202,26 +202,28 @@ def create_user():
     db.session.commit()
     return json.dumps(new_user.serialize()),201
 
-@app.route("/api/join/<int:user_id>/", methods = [""])
+@app.route("/api/user/<int:user_id>/", methods = ["POST"])
 def join_pod(user_id):
     """
     Endpoint for a User to join a Pod, using pod id and a join code.
+
     request:
     user_id
     join_code
     """
-    user = User.query.filter_by(id = body.get("user_id")).first()
+    user = User.query.filter_by(id = user_id).first()
     if user is None:
         return json.dumps({"error": "user is null"}), 404
+    if user.podID != None:
+        return json.dumps({"error": "user is already in pod"}), 404
     body = json.loads(request.data)
     join_code=body.get("join_code")
     pod = Pod.query.filter_by(join_code=join_code).first()
     if pod is None:
-        return json.dumps({"error": "No pod with that join code."}), 404
-    pod.users.append(user)
+        return json.dumps({"error": "no pod with that join code."}), 404
+    user.podID=pod.id
     db.session.commit()
-
-    return json.dumps(pod.serialize()), 200
+    return json.dumps(user.serialize()), 200
 
 @app.route("/api/user/<int:user_id>/delete/",methods = ["DELETE"])
 def delete_user_from_pod(user_id):
@@ -254,51 +256,41 @@ def create_pod(user_id):
     """
     Endpoint for creating a pod
     """
-    body = json.loads(request.data)
+    user = User.query.filter_by(id = user_id).first()
     if user_id is None:
         return json.dumps({"error": "pod creator not found"}), 404
+    if user.podID != None:
+        return json.dumps({"error": "user is already in pod"}), 404
+    body = json.loads(request.data)
     if body.get("name") is None:
-        return json.dumps({"Pod name is missing."}), 400
+        return json.dumps({"error:" "pod name field not supplied"}), 400
     if body.get("description") is None:
-        return json.dumps({"Pod description is missing."}), 400
-    #in here, add the pod to the User object
+        return json.dumps({"error:" "pod description field not supplied"}), 400
     new_pod = Pod(name=body.get("name"), description=body.get("description"))
     db.session.add(new_pod)
     db.session.commit()
     if new_pod is None:
         return json.dumps({"error": "new pod is null."}), 400
+    user.podID=new_pod.id
+    user.leader = True
+    db.session.commit()
     return json.dumps(new_pod.serialize()), 201
 
-@app.route("/api/pod/<int:pod_id>/", methods=["DELETE"])
-def delete_pod_by_id(pod_id):
+@app.route("/api/pod/<int:user_id>/", methods=["DELETE"])
+def delete_pod_by_id(user_id):
     """
     Endpoint for deleting pod by id
     """
-
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
-    #if the user calling method is pod creator
-    db.session.delete(pod)
-    db.session.commit()
-    return json.dumps(pod.serialize()), 200
-
-@app.route("/api/pod/<int:pod_id>/add/",methods = ["POST"])
-def add_user_to_pod(pod_id):
-    """
-    Endpoint for adding a user to a pod by id
-    """
-    pod = Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod is not found."}), 404
-    #process request body if pod IS found
+    user = User.query.filter_by(id = user_id).first()
+    if user_id is None:
+        return json.dumps({"error": "pod creator not found"}), 404
     body = json.loads(request.data)
-    user = User.query.filter_by(id = body.get("user_id")).first()
-    if user is None:
-        return json.dumps({"error": "user is null"}), 404
-    pod.users.append(user)
-    db.session.commit()
-
+    if body.get("pod_id") is None:
+        return json.dumps({"error:" "pod to delete not specified"}), 400
+    pod = Pod.query.filter_by(id=body.get("pod_id")).first()
+    if user.leader == True:
+        db.session.delete(pod)
+        db.session.commit()
     return json.dumps(pod.serialize()), 200
 
 

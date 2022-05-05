@@ -182,7 +182,7 @@ def get_user(user_id):
     """
     user = User.query.filter_by(id=user_id).first()
     if user is None:
-        return json.dumps({"error:" "user not found"}),404
+        return json.dumps({"error": "user not found"}),404
     return json.dumps(user.serialize()),200
 
 
@@ -286,9 +286,9 @@ def create_pod(user_id):
         return json.dumps({"error": "user is already in pod"}), 404
     body = json.loads(request.data)
     if body.get("name") is None:
-        return json.dumps({"error:" "pod name field not supplied"}), 400
+        return json.dumps({"error": "pod name field not supplied"}), 400
     if body.get("description") is None:
-        return json.dumps({"error:" "pod description field not supplied"}), 400
+        return json.dumps({"error": "pod description field not supplied"}), 400
     new_pod = Pod(name=body.get("name"), description=body.get("description"))
     db.session.add(new_pod)
     db.session.commit()
@@ -348,7 +348,7 @@ def delete_pod_by_id(user_id):
         return json.dumps({"error": "pod creator not found"}), 404
     body = json.loads(request.data)
     if body.get("pod_id") is None:
-        return json.dumps({"error:" "pod to delete not specified"}), 400
+        return json.dumps({"error": "pod to delete not specified"}), 400
     pod = Pod.query.filter_by(id=body.get("pod_id")).first()
     if user.leader == False:
         return json.dumps({"error": "not allowed"}), 400
@@ -367,11 +367,11 @@ def create_task(pod_id):
     """
     pod=Pod.query.filter_by(id=pod_id).first()
     if pod is None:
-        return json.dumps({"error":"pod not found"}), 404
+        return json.dumps({"error": "pod not found"}), 404
     body=json.loads(request.data)
     description=body.get("description")
     if description is None:
-        return json.dumps({"error:" "task description field not supplied"}), 400
+        return json.dumps({"error": "task description field not supplied"}), 400
     new_task=Task(description=description, pod_id=pod_id)
     db.session.add(new_task)
     db.session.commit()
@@ -384,7 +384,7 @@ def get_task_by_id(task_id):
     """
     task=Task.query.filter_by(id=task_id).first()
     if task is None:
-        return json.dumps({"error":"task not found"}), 404
+        return json.dumps({"error": "task not found"}), 404
     return json.dumps(task.serialize()), 201
 
 @app.route("/api/task/update/<int:task_id>/", methods = ["POST"])

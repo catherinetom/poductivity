@@ -63,6 +63,9 @@ def register_account():
     if username is None or password is None or leader is None :
         return json.dumps({"error": "Missing username or password or leader"}),404
     
+    if leader != 0:
+        return json.dumps({"error": "Can only be a member upon registration. Join a pod to be a leader!"})
+    
     was_successful, user = users_dao.create_user(username, password, leader)
 
     if not was_successful:
@@ -328,8 +331,14 @@ def pod_leaderboard(pod_id):
     """
     Endpoint for returning all users of a pod by number of tasks completed
     """
-    User.query.order_by(User.tasks_completed).all()
-    return json.dumps({"users": [u.serialize() for u in User.query.filter(User.podID == pod_id).all()]}),200
+    users = User.query.order_by(User.tasks_completed).all()
+    length = len(users)
+    user1st= users[length-1]
+    if length > 1:
+        user2nd= users[length-2]
+    if length > 2:
+        user3rd= users[length-3]
+    return json.dumps({"users": [user1st.serialize(), user2nd.serialize(), user3rd.serialize()]}),200
 
 
 @app.route("/api/pod/totaltasks/<int:pod_id>/")

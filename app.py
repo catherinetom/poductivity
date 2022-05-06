@@ -1,9 +1,9 @@
 import json
 from db import db, User, Pod, Task
 from flask import Flask, request
-import datetime
 import users_dao
 import os
+import datetime
 
 # define db filename
 app = Flask(__name__)
@@ -59,14 +59,18 @@ def register_account():
     username = body.get("username")
     password = body.get("password")
     leader = body.get("leader")
+    tasks_completed = body.get("tasks_completed")
 
-    if username is None or password is None or leader is None :
-        return json.dumps({"error": "Missing username or password or leader"}),404
+    if username is None or password is None or leader is None or tasks_completed:
+        return json.dumps({"error": "Missing username or password or leader or tasks_completed"}),404
     
     if leader != 0:
         return json.dumps({"error": "Can only be a member upon registration. Join a pod to be a leader!"})
     
-    was_successful, user = users_dao.create_user(username, password, leader)
+    if tasks_completed != 0:
+        return json.dumps({"error": "Don't cheat, everyone starts with 0!"})
+    
+    was_successful, user = users_dao.create_user(username, password, leader, tasks_completed)
 
     if not was_successful:
         return json.dumps({"error": "User already exists"}),404
@@ -102,8 +106,7 @@ def login():
             "update_token": user.update_token,
             "login": "successful"
 
-        }
-    ),201 
+        }),201
 
 
 @app.route("/session/", methods=["POST"])
@@ -212,7 +215,6 @@ def create_user():
 def join_pod(user_id):
     """
     Endpoint for a User to join a Pod, using pod id and a join code.
-
     request:
     user_id
     join_code
@@ -291,6 +293,16 @@ def get_pod(pod_id):
         return json.dumps({"error": "pod not found"}), 404
     return json.dumps(pod.serialize()), 200
 
+@app.route("/api/pod/joincode/<int:pod_id>/")
+def get_pod_joincode(pod_id):
+    """
+    Endpoint for getting a pod's join code
+    """
+    pod = Pod.query.filter_by(id=pod_id).first()
+    if pod is None:
+        return json.dumps({"error": "pod not found"}), 404
+    return json.dumps(pod.join_code), 200
+
 
 @app.route("/api/pod/<int:user_id>/", methods = ["POST"])
 def create_pod(user_id):
@@ -333,12 +345,15 @@ def pod_leaderboard(pod_id):
     """
     users = User.query.order_by(User.tasks_completed).all()
     length = len(users)
-    user1st= users[length-1]
+    user1st= users[length-1] 
     if length > 1:
         user2nd= users[length-2]
     if length > 2:
         user3rd= users[length-3]
-    return json.dumps({"users": [user1st.serialize(), user2nd.serialize(), user3rd.serialize()]}),200
+    user1stString = user1st.username + ", tasks done: " + str(user1st.tasks_completed)
+    user2ndString = user2nd.username + ", tasks done: " + str(user2nd.tasks_completed)
+    user3rdString = user3rd.username + ", tasks done: " + str(user3rd.tasks_completed)
+    return json.dumps({"top users": [user1stString, user2ndString, user3rdString]}),200
 
 
 @app.route("/api/pod/totaltasks/<int:pod_id>/")

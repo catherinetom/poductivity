@@ -343,7 +343,7 @@ def pod_leaderboard(pod_id):
     """
     Endpoint for returning all users of a pod by number of tasks completed
     """
-    users = User.query.order_by(User.tasks_completed).all()
+    users = User.query.filter(User.podID == pod_id)
     length = len(users)
     user1st= users[length-1] 
     if length > 1:

@@ -12,14 +12,16 @@ db = SQLAlchemy()
 class User(db.Model):
     """
     User model
+    Has a many-to-one relationship with Pod
+    Has a one-to-many relationship with Task 
     """
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key = True, autoincrement = True)
     username = db.Column(db.String, nullable = False)
     password = db.Column(db.String, nullable = False)
     leader = db.Column(db.Boolean, nullable = False)
+    tasks_completed = db.Column(db.Integer, nullable = False)
     podID = db.Column(db.Integer, db.ForeignKey("pod.id", ondelete="SET NULL"))
-
 
     def __init__(self, **kwargs):
         """
@@ -28,6 +30,7 @@ class User(db.Model):
         # name, netid, leader
         self.username = kwargs.get("username", "")
         self.password = kwargs.get("password","")
+        self.tasks_completed = 0
         self.leader = False
         self.renew_session()
     
@@ -43,18 +46,20 @@ class User(db.Model):
             "id": self.id,
             "username": self.username,
             "password": self.password,
+            "tasks_completed": self.tasks_completed,
             "leader": self.leader,
-            "pod": pod_serialized
+            "pod": pod_serialized,
         }
 
     def simple_serialize(self):
         """
-        Serializes a User object without pod
+        Serializes a User object without pod or tasks
         """
         return {
             "id": self.id,
             "username": self.username,
             "password": self.password,
+            "tasks_completed": self.tasks_completed,
             "leader": self.leader
         }
     def _urlsafe_base_64(self):
@@ -96,15 +101,14 @@ class User(db.Model):
 class Pod(db.Model):
     """
     Pod model
-    Has a one-to-many relationship with User model
-    Has a one-to-many relationship with Task model
+    Has a one-to-many relationship with User 
+    Has a one-to-many relationship with Task 
     """
     __tablename__ = "pod"
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String, nullable=False)
     description = db.Column(db.String, nullable=False)
     join_code = db.Column(db.String, nullable = False)
-    total_completed = db.Column(db.Integer, nullable=False)
     tasks = db.relationship("Task", cascade="delete")
 
 
@@ -115,7 +119,6 @@ class Pod(db.Model):
         self.name = kwargs.get("name", "")
         self.description = kwargs.get("description", "")
         self.join_code = random.randint(1000,9999)
-        self.total_completed = 0
 
     def serialize(self):
         """
@@ -125,7 +128,6 @@ class Pod(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "total_completed": self.total_completed,
             "join_code": self.join_code,
             "tasks": [t.serialize() for t in self.tasks],
         }
@@ -139,20 +141,22 @@ class Pod(db.Model):
             "name": self.name,
             "description": self.description,
             "join_code": self.join_code,
-            "total_completed": self.total_completed,
         }
 
 
 class Task(db.Model):
     """
     Task model
-    Has a one-to-many relationship with Pod
+    Has a many-to-one relationship with Pod
+    Has a many-to-one relationship with User
     """
     __tablename__ = "tasks"
     id = db.Column(db.Integer, primary_key=True,autoincrement=True)
     description = db.Column(db.String, nullable=False)
     status = db.Column(db.Boolean, nullable=False)
     pod_id=db.Column(db.Integer, db.ForeignKey("pod.id"), nullable=False)
+    creator_id=db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    completer_id=db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     def __init__(self, **kwargs):
         """
@@ -160,15 +164,25 @@ class Task(db.Model):
         """
         self.description=kwargs.get("description")
         self.pod_id=kwargs.get("pod_id")
+        self.creator_id=kwargs.get("creator_id")
+        self.completer_id=kwargs.get("completer_id")
         self.status = False
 
     def serialize(self):
         """
         serialize Task object
         """
+        pod = Pod.query.filter_by(id = self.pod_id).first()
+        creator = User.query.filter_by(id = self.creator_id).first().username
+        completer = User.query.filter_by(id = self.completer_id).first()
+        completer_user = None
+        if completer is not None:
+            completer_user = completer.username
         return {
             "id": self.id,
             "description": self.description,
             "status": self.status,
-            "pod_id": self.pod_id
+            "pod": pod.name,
+            "created by": creator,
+            "completed by": completer_user
         }

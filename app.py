@@ -70,7 +70,7 @@ def register_account():
     if tasks_completed != 0:
         return json.dumps({"error": "Don't cheat, everyone starts with 0!"})
     
-    was_successful, user = users_dao.create_user(username, password, leader, tasks_completed)
+    was_successful, user = users_dao.create_user(username,password,leader)
 
     if not was_successful:
         return json.dumps({"error": "User already exists"}),404
@@ -205,7 +205,7 @@ def create_user():
         return json.dumps({"error": "username field not supplied."}), 400
     if not new_password:
         return json.dumps({"error": "password field not supplied."}), 400
-    new_user = User(username = new_username, password = new_password)
+    new_user = User(username = new_username, password = new_password,leader=0,tasks_completed = 0)
     db.session.add(new_user)
     db.session.commit()
     return json.dumps(new_user.serialize()),201
@@ -342,18 +342,25 @@ def pod_all_users(pod_id):
 def pod_leaderboard(pod_id):
     """
     Endpoint for returning all users of a pod by number of tasks completed
-    """
-    users = User.query.filter(User.podID == pod_id)
+    """  
+    orderedUsers = User.query.order_by(User.tasks_completed).all()
+    users = []
+    for user in orderedUsers:
+        if user.podID == pod_id:
+            users.append(user)
     length = len(users)
     user1st= users[length-1] 
+    user2ndString = "second: invite more users!"
+    user3rdString = "third: invite more users!"
+    user1stString = "first: " + user1st.username + ", tasks done: " + str(user1st.tasks_completed)
     if length > 1:
         user2nd= users[length-2]
+        user2ndString = "second: " + user2nd.username + ", tasks done: " + str(user2nd.tasks_completed)
     if length > 2:
         user3rd= users[length-3]
-    user1stString = user1st.username + ", tasks done: " + str(user1st.tasks_completed)
-    user2ndString = user2nd.username + ", tasks done: " + str(user2nd.tasks_completed)
-    user3rdString = user3rd.username + ", tasks done: " + str(user3rd.tasks_completed)
-    return json.dumps({"top users": [user1stString, user2ndString, user3rdString]}),200
+        user3rdString = "third: " + user3rd.username + ", tasks done: " + str(user3rd.tasks_completed)
+    userslist = [user1stString, user2ndString, user3rdString]
+    return json.dumps({"top users": userslist}),200
 
 
 @app.route("/api/pod/totaltasks/<int:pod_id>/")

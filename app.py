@@ -1,6 +1,7 @@
 import json
 from db import db, User, Pod, Task
 from flask import Flask, request
+import datetime
 import users_dao
 import os
 
@@ -84,7 +85,7 @@ def login():
     password = body.get("password")
 
     if username is None or password is None:
-        return json.dumps({"error": "Missing email or password"}),400
+        return json.dumps({"error": "Missing username or password"}),400
     
     was_successful, user = users_dao.verify_credentials(username,password)
 
@@ -228,6 +229,19 @@ def join_pod(user_id):
     return json.dumps(user.serialize()), 200
 
 
+@app.route("/api/user/taskscompleted/<int:user_id>/")
+def user_tasks_completed(user_id):
+    user = User.query.filter_by(id=user_id).first()
+    if user is None:
+        return json.dumps({"error": "user not found"}), 404
+    tasks_completed = 0
+    for t in Task.query.all():
+        if t.completer_id == user_id:
+            if t.status == True:
+                tasks_completed=tasks_completed+1
+    return json.dumps({"tasks completed by user": tasks_completed}), 201
+
+
 @app.route("/api/user/<int:user_id>/delete/",methods = ["DELETE"])
 def delete_user_from_pod(user_id):
     """
@@ -248,6 +262,7 @@ def delete_user_from_pod(user_id):
         return json.dumps({"error": "not allowed"}), 400
     if userDeleting.leader == True:
         userToDelete.podID=None
+        userToDelete.tasks_completed=0
         db.session.commit()
     return json.dumps(userToDelete.serialize()), 200
 
@@ -300,8 +315,28 @@ def create_pod(user_id):
     return json.dumps(new_pod.serialize()), 201
 
 
+@app.route("/api/pod/alluser/<int:pod_id>/")
+def pod_all_users(pod_id):
+    """
+    Endpoint for getting all users of a pod
+    """
+    return json.dumps({"users": [u.serialize() for u in User.query.filter(User.podID == pod_id).all()]}),200
+
+
+@app.route("/api/pod/leaderboard/<int:pod_id>/")
+def pod_leaderboard(pod_id):
+    """
+    Endpoint for returning all users of a pod by number of tasks completed
+    """
+    User.query.order_by(User.tasks_completed).all()
+    return json.dumps({"users": [u.serialize() for u in User.query.filter(User.podID == pod_id).all()]}),200
+
+
 @app.route("/api/pod/totaltasks/<int:pod_id>/")
 def pod_total_tasks(pod_id):
+    """
+    Endpoint for getting total number of tasks of a pod
+    """
     pod = Pod.query.filter_by(id=pod_id).first()
     if pod is None:
         return json.dumps({"error": "pod not found"}), 404
@@ -314,6 +349,9 @@ def pod_total_tasks(pod_id):
 
 @app.route("/api/pod/taskscompleted/<int:pod_id>/")
 def pod_tasks_completed(pod_id):
+    """
+    Endpoint for getting total number of completed tasks of a pod
+    """
     pod = Pod.query.filter_by(id=pod_id).first()
     if pod is None:
         return json.dumps({"error": "pod not found"}), 404
@@ -327,6 +365,9 @@ def pod_tasks_completed(pod_id):
 
 @app.route("/api/pod/tasksincomplete/<int:pod_id>/")
 def pod_tasks_incompleted(pod_id):
+    """
+    Endpoint for getting total number of incomplete tasks of a pod
+    """
     pod = Pod.query.filter_by(id=pod_id).first()
     if pod is None:
         return json.dumps({"error": "pod not found"}), 404
@@ -360,23 +401,28 @@ def delete_pod_by_id(user_id):
 
 # TASK ROUTES
 
-@app.route("/api/task/<int:pod_id>/", methods = ["POST"])
-def create_task(pod_id):
+@app.route("/api/task/<int:user_id>/", methods = ["POST"])
+def create_task(user_id):
     """
     Endpoint for creating a task
     request:
     description
     """
-    pod=Pod.query.filter_by(id=pod_id).first()
-    if pod is None:
-        return json.dumps({"error": "pod not found"}), 404
+    user=User.query.filter_by(id=user_id).first()
+    if user is None:
+        return json.dumps({"error": "user not found"}), 404
     body=json.loads(request.data)
     description=body.get("description")
     if description is None:
         return json.dumps({"error": "task description field not supplied"}), 400
-    new_task=Task(description=description, pod_id=pod_id)
+    new_task=Task(description=description, pod_id=user.podID, creator_id=user.id)
+    print(new_task.creator_id)
     db.session.add(new_task)
+    print(new_task.creator_id)
     db.session.commit()
+    print(new_task.creator_id)
+    if new_task is None:
+        return json.dumps({"error": "new task is null."}), 400
     return json.dumps(new_task.serialize()), 201
 
 @app.route("/api/task/<int:task_id>/")
@@ -389,21 +435,28 @@ def get_task_by_id(task_id):
         return json.dumps({"error": "task not found"}), 404
     return json.dumps(task.serialize()), 201
 
-@app.route("/api/task/update/<int:task_id>/", methods = ["POST"])
-def update_task(task_id):
+@app.route("/api/task/update/<int:user_id>/", methods = ["POST"])
+def update_task(user_id):
     """
     Endpoint for updating a task's status
     request:
     status
     """
-    task=Task.query.filter_by(id=task_id).first()
+    body=json.loads(request.data)
+    if body.get("task_id") is None:
+        return json.dumps({"error": "task not specified"}), 400
+    task=Task.query.filter_by(id=body.get("task_id")).first()
     if task is None:
         return json.dumps({"error":"task not found"}), 404
-    body=json.loads(request.data)
+    user=User.query.filter_by(id=user_id).first()
+    if user is None:
+        return json.dumps({"error": "user not found"}), 404
     status=body.get("done")
     if status is None:
         return json.dumps({"error":"incomplete request"}), 400
-    task.status=status
+    task.status = status
+    task.completer_id = user.id
+    user.tasks_completed = user.tasks_completed+1
     db.session.commit()
     return json.dumps(task.serialize()), 201
 
